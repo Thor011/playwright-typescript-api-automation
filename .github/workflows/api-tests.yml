@@ -1,0 +1,123 @@
+name: API Test Automation CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    # Allow manual trigger
+
+jobs:
+  test:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: APITestAutomation/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: ./APITestAutomation
+      run: npm ci
+      
+    - name: Install Playwright
+      working-directory: ./APITestAutomation
+      run: npx playwright install --with-deps
+      
+    - name: Run API tests
+      working-directory: ./APITestAutomation
+      env:
+        API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        API_KEY: ${{ secrets.API_KEY }}
+      run: npm test
+      
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-node-${{ matrix.node-version }}
+        path: |
+          APITestAutomation/test-results/
+          APITestAutomation/playwright-report/
+        retention-days: 30
+        
+    - name: Upload HTML report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: html-report-node-${{ matrix.node-version }}
+        path: APITestAutomation/test-results/html-report/
+        retention-days: 30
+        
+    - name: Publish test results
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Test Results (Node ${{ matrix.node-version }})
+        path: APITestAutomation/test-results/junit.xml
+        reporter: java-junit
+        fail-on-error: true
+        
+    - name: Comment PR with test results
+      uses: daun/playwright-report-comment@v3
+      if: always() && github.event_name == 'pull_request'
+      with:
+        report-path: APITestAutomation/test-results/html-report
+        
+  deploy-report:
+    name: Deploy Test Report to GitHub Pages
+    needs: test
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main'
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: html-report-node-20.x
+        path: ./report
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload artifact to Pages
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./report
+        
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+      
+  notify:
+    name: Notify on Failure
+    needs: test
+    runs-on: ubuntu-latest
+    if: failure()
+    
+    steps:
+    - name: Send notification
+      run: |
+        echo "Tests failed on ${{ github.ref }}"
+        echo "Commit: ${{ github.sha }}"
+        echo "Author: ${{ github.actor }}"
