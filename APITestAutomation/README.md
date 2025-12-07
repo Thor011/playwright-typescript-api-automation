@@ -1,5 +1,12 @@
 # API Test Automation Suite
 
+[![Playwright](https://img.shields.io/badge/Playwright-45ba4b?logo=playwright&logoColor=white)](https://playwright.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-43853D?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Tests](https://img.shields.io/badge/tests-43%20total-blue)](https://github.com/Thor011/playwright-typescript-api-automation)
+[![Passing](https://img.shields.io/badge/passing-42-success)](https://github.com/Thor011/playwright-typescript-api-automation)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 Comprehensive API testing framework built with Playwright and TypeScript for automated testing of REST APIs.
 
 ## 📋 Table of Contents
